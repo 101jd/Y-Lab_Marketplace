@@ -29,11 +29,11 @@ public interface View {
 
     /**
      * Adds product to user's cart and decrease qty in product's item
-     * @param uuid of product
+     * @param id of product
      * @param user cart owner
      * @return modified Item
      */
-    Item addProductToCart(UUID uuid, User user);
+    Item addProductToCart(Long id, User user);
 
     /**
      *
@@ -62,17 +62,17 @@ public interface View {
      * @return product id
      * @throws QtyLessThanZeroException
      */
-    UUID addItemToPlatform(Product product, int qty) throws QtyLessThanZeroException;
+    Long addItemToPlatform(User user, Product product, int qty) throws QtyLessThanZeroException;
 
     /**
      *
-     * @param uuid of modifying product item
+     * @param itemId of modifying product item
      * @param newProduct
      * @param qty new qty
      * @return Modified Item
      * @throws QtyLessThanZeroException
      */
-    Item editItem(UUID uuid, ProductDTO newProduct, Integer qty) throws QtyLessThanZeroException;
+    Item editItem(User user, Long itemId, ProductDTO newProduct, Integer qty) throws QtyLessThanZeroException;
 
     void saveCart(User user);
 }

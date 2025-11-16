@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+                   logicalFilePath="db/changelog/changelog.xml">
+    <include file="default-values.xml" relativeToChangelogFile="true"/>
+    <changeSet id="004-insert-item" author="y_lab">
+        <insert tableName="products" schemaName="mps">
+            <column name="id" valueNumeric="1"/>
+            <column name="title" value="Test"/>
+            <column name="description" value="test product"/>
+            <column name="price" valueNumeric="100"/>
+            <column name="discount" valueNumeric="30"/>
+        </insert>
+        <insert tableName="items" schemaName="mps">
+            <column name="product_id" valueNumeric="1"/>
+            <column name="qty" valueNumeric="2"/>
+        </insert>
+
+    </changeSet>
+</databaseChangeLog>

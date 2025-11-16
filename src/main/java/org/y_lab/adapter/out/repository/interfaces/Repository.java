@@ -4,25 +4,26 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
-public interface Repository<T> extends SaveRepo<T> {
+public interface Repository<K, T> extends SimpleRepository<K, T> {
 
 
     /**
      * Updates changes on t
-     * @param uuid of modifying t
+     * @param id of modifying t
      * @param t modified
      * @return modified t
      * @throws SQLException
      */
-    T update(UUID uuid, T t) throws SQLException;
+    T update(K id, T t) throws SQLException;
 
     /**
      * Delete t from BD
+     *
      * @param t to delete
      * @return deleted t
      * @throws SQLException
      */
-    T delete(T t) throws SQLException;
+    boolean delete(T t) throws SQLException;
 
 
 

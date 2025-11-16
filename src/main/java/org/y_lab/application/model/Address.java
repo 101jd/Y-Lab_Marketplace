@@ -4,6 +4,9 @@ import org.y_lab.application.model.dto.AddressDTO;
 
 import java.util.UUID;
 
+/**
+ * Domain class Address
+ */
 public class Address {
     private UUID id;
     private String city;
@@ -11,6 +14,10 @@ public class Address {
     private int houseNumber;
     private int apartment;
 
+    /**
+     * Constructor from AddressDTO object
+     * @param dto to copy fields
+     */
     public Address(AddressDTO dto){
         this.id = dto.getId();
         this.city = dto.getCity();
@@ -19,6 +26,13 @@ public class Address {
         this.apartment = dto.getApartment();
     }
 
+    /**
+     * Base constructor
+     * @param city
+     * @param street
+     * @param houseNumber
+     * @param appartment
+     */
     public Address(String city, String street, int houseNumber, int appartment) {
         this.id = UUID.randomUUID();
         this.city = city;
@@ -46,4 +60,5 @@ public class Address {
     public int getApartment() {
         return apartment;
     }
+
 }

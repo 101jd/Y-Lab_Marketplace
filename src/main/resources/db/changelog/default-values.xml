@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+logicalFilePath="db/changelog/changelog.xml">
+    <property name="cartUuid" value="f0c8c3a2-4d6d-4b6d-94c4-c10da8b4f3ad"/>
+    <property name="addressUuid" value="7de5b0cb-79dd-4bf3-bc1b-2c9e6b0e88a2"/>
+</databaseChangeLog>

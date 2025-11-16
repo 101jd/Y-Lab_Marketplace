@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+                   logicalFilePath="db/changelog/changelog.xml">
+    <changeSet id="001-create-tables" author="y_lab">
+
+        <createTable tableName="addresses" schemaName="mps">
+            <column name="id" type="VARCHAR(64)">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="city" type="VARCHAR(32)"/>
+            <column name="street" type="VARCHAR(32)"/>
+            <column name="houseNumber" type="INT"/>
+            <column name="apartment" type="INT"/>
+        </createTable>
+
+        <createTable tableName="users" schemaName="mps">
+            <column name="id" autoIncrement="true" type="BIGINT">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="username" type="VARCHAR(64)">
+                <constraints unique="true"/>
+            </column>
+            <column name="password" type="VARCHAR(255)"/>
+            <column name="address_id" type="VARCHAR(64)">
+                <constraints foreignKeyName="fk_address_id" referencedTableName="addresses" referencedColumnNames="id"
+                deleteCascade="true"/>
+            </column>
+            <column name="cart_id" type="VARCHAR(64)"/>
+            <column name="admin" type="BOOL"/>
+        </createTable>
+
+        <createTable tableName="carts" schemaName="mps">
+            <column name="id" type="VARCHAR(64)">
+                <constraints primaryKey="true"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="goods" schemaName="mps">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="cart_id" type="VARCHAR(64)">
+                <constraints foreignKeyName="fk_cart_id" referencedTableName="carts" referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="product_id" type="BIGINT"/>
+        </createTable>
+        
+        <createTable tableName="products" schemaName="mps">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="title" type="VARCHAR(64)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="price" type="FLOAT"/>
+            <column name="discount" type="INT"/>
+        </createTable>
+
+        <createTable tableName="items" schemaName="mps">
+            <column name="product_id" type="BIGINT">
+                <constraints primaryKey="true" foreignKeyName="fk_product_id"
+                             referencedTableName="products" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="qty" type="INT"/>
+        </createTable>
+
+
+    </changeSet>
+</databaseChangeLog>
