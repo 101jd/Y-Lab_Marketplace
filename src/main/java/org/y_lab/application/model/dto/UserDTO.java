@@ -3,18 +3,16 @@ package org.y_lab.application.model.dto;
 import org.y_lab.application.model.Address;
 import org.y_lab.application.model.Cart;
 
-import java.util.UUID;
-
 public class UserDTO {
 
-    private UUID id;
+    private Long id;
     private String username;
     private String password;
     private Address address;
     private Cart cart;
     private boolean admin;
 
-    public UserDTO(UUID id, String username, String password, Address address, Cart cart, boolean admin) {
+    public UserDTO(Long id, String username, String password, Address address, Cart cart, boolean admin) {
         this.id = id;
         this.username = username;
         this.password = password;
@@ -23,7 +21,7 @@ public class UserDTO {
         this.admin = admin;
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 

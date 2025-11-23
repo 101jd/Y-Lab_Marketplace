@@ -6,36 +6,49 @@ import org.y_lab.application.model.dto.UserDTO;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.UUID;
 
 public class User {
-    private UUID id;
+    private Long id;
     private String username;
     private byte[] password;
     private Address address;
     private Cart cart;
     private boolean admin;
 
+    /**
+     * Constructor from DTO object
+     * @param dto to copy fields
+     */
     public User(UserDTO dto){
         this.id = dto.getId();
         this.username = dto.getUsername();
-        this.password = dto.getPassword().getBytes(StandardCharsets.UTF_8);
+        this.password = encodePassword(this.username, dto.getPassword());
         this.address = dto.getAddress();
         this.cart = dto.getCart();
         this.admin = dto.isAdmin();
     }
 
 
+    /**
+     * Base constructor
+     * Id autoincrements in DB
+     * @param username
+     * @param password hashes with MD5
+     * @param address
+     * @param admin
+     */
     public User(String username, String password, Address address, boolean admin) {
-        this.id = UUID.randomUUID();
+        this.id = null;
         this.username = username;
         this.password = encodePassword(this.username, password);
         this.address = address;
-        this.cart = new Cart(this);
+        this.cart = new Cart();
         this.admin = admin;
     }
 
     private byte[] encodePassword(String username, String password){
+        if (password == null)
+            return new byte[0];
         return MD5Digest.encode(username.getBytes(StandardCharsets.UTF_8),
                 password.getBytes(StandardCharsets.UTF_8),
                 "salt".getBytes(StandardCharsets.UTF_8));
@@ -50,7 +63,7 @@ public class User {
         return new String(encodePassword(this.username, cPassword)).equals(new String(this.password));
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 
@@ -104,4 +117,5 @@ public class User {
             this.cart = cart;
         }
     }
+
 }

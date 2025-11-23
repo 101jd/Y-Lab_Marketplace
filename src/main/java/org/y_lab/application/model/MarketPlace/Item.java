@@ -2,11 +2,21 @@ package org.y_lab.application.model.MarketPlace;
 
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
 
+/**
+ * Domain class Item
+ */
 public class Item {
     private Product product;
     int qty;
     boolean inStock;
 
+    /**
+     * Base constructor
+     * Validates qty (can be equal or more than 0)
+     * @param product
+     * @param qty
+     * @throws QtyLessThanZeroException if validate qty fails
+     */
     public Item(Product product, Integer qty) throws QtyLessThanZeroException {
         this.product = product;
         this.qty = validateQty(qty);
@@ -32,6 +42,9 @@ public class Item {
         return qty;
     }
 
+    /**
+     * Decrements qty on 1
+     */
     public void decrementQty(){
         --qty;
     }

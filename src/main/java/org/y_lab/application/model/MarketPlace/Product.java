@@ -4,13 +4,12 @@ import org.y_lab.application.exceptions.WrongDiscountException;
 import org.y_lab.application.model.dto.ProductDTO;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Domain class Product
  */
 public class Product {
-    private UUID id;
+    private Long id;
     private String title;
     private String description;
     private double price;
@@ -38,7 +37,7 @@ public class Product {
      * @throws WrongDiscountException RuntimeException
      */
     public Product(String title, String description, Double price, Integer discount) throws WrongDiscountException {
-        this.id = UUID.randomUUID();
+        this.id = null;
         this.title = title;
         this.description = description;
         this.price = price;
@@ -70,7 +69,7 @@ public class Product {
 
     //region getters
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 
@@ -89,7 +88,6 @@ public class Product {
     public int getDiscount() {
         return discount;
     }
-
 
     /**
      * @return total price with discount applied

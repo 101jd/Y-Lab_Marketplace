@@ -1,76 +1,65 @@
 package org.y_lab.adapter.out.repository;
 
+import liquibase.exception.LiquibaseException;
+import org.y_lab.adapter.out.repository.caches.UserCache;
+import org.y_lab.adapter.out.repository.interfaces.Cache;
 import org.y_lab.adapter.out.repository.interfaces.Repository;
-import org.y_lab.application.exceptions.ConnectionIsNullException;
+import org.y_lab.application.exceptions.NotFoundException;
 import org.y_lab.application.exceptions.SQLRuntimeException;
-import org.y_lab.application.model.*;
+import org.y_lab.application.model.Address;
+import org.y_lab.application.model.Cart;
+import org.y_lab.application.model.User;
 import org.y_lab.application.model.dto.AddressDTO;
 import org.y_lab.application.model.dto.CartDTO;
 import org.y_lab.application.model.dto.UserDTO;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
 
-public class UserRepositoryImpl implements Repository<User> {
+public class UserRepositoryImpl implements Repository<Long, User> {
 
     private Connection connection;
-    private static Repository<User> instance;
+    private Cache<Long, User> userCache;
 
-    static {
-        try {
-            instance = new UserRepositoryImpl();
-        } catch (SQLException e) {
-            throw new SQLRuntimeException(e.getMessage());
-        }
-    }
-
-    public UserRepositoryImpl(Connection connection) throws SQLException {
+    public UserRepositoryImpl(Connection connection){
         this.connection = connection;
-        init(connection);
+        this.userCache = new UserCache();
     }
 
-    private UserRepositoryImpl() throws SQLException {
-        Properties properties = new Properties();
-        try {
-            InputStream loader = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream("application.properties");
-            properties.load(loader);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Connection connection = DriverManager.getConnection(
-                properties.getProperty("url"), properties.getProperty("username"),
-                properties.getProperty("password"));
-
-        this.connection = connection;
-        init(connection);
+    public UserRepositoryImpl() throws SQLException, LiquibaseException {
+        this(ConnectionManager.getInstance().getConnection());
     }
+
+
 
 
     @Override
-    public UUID save(User user) throws SQLException {
+    public Long save(User user) throws SQLException {
         connection.beginRequest();
+
         try(PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO users (id, username, password, address_id, cart_id, admin) " +
-                        "VALUES(?, ?, ?, ?, ?, ?)"
+                "INSERT INTO users (username, password, address_id, cart_id, admin) " +
+                        "VALUES(?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
         )) {
-            statement.setString(1, user.getId().toString());
-            statement.setString(2, user.getUsername());
-            statement.setString(3, new String(user.getPassword()));
-            statement.setString(4, user.getAddress().getId().toString());
-            statement.setString(5, user.getCart().getId().toString());
-            statement.setBoolean(6, user.isAdmin());
+
+            statement.setString(1, user.getUsername());
+            statement.setString(2, new String(user.getPassword()));
+            statement.setString(3, user.getAddress().getId().toString());
+            statement.setString(4, user.getCart().getId().toString());
+            statement.setBoolean(5, user.isAdmin());
 
             saveAddress(user.getAddress());
             saveCart(user);
             statement.executeUpdate();
 
-            return user.getId();
+            ResultSet set = statement.getGeneratedKeys();
+
+            if (set.next()) {
+                return set.getLong("id");
+            }
+            else throw new SQLRuntimeException("User save failed");
 
         }catch (SQLException e){
             throw e;
@@ -80,7 +69,7 @@ public class UserRepositoryImpl implements Repository<User> {
     }
 
     @Override
-    public User update(UUID uuid, User user) throws SQLException {
+    public User update(Long id, User user) throws SQLException {
         connection.beginRequest();
         try(PreparedStatement statement = connection.prepareStatement(
                 "UPDATE users SET username=?, password=?, address_id=?, admin=? WHERE id=?"
@@ -89,16 +78,21 @@ public class UserRepositoryImpl implements Repository<User> {
             statement.setString(2, new String(user.getPassword()));
             statement.setString(3, user.getAddress().getId().toString());
             statement.setBoolean(4, user.isAdmin());
-            statement.setString(5, uuid.toString());
+            statement.setLong(5, id);
 
 
-            if (!this.getById(uuid).getAddress().getId().equals(user.getAddress().getId())){
+            if (!this.getById(id).getAddress().getId().equals(user.getAddress().getId())){
                 saveAddress(user.getAddress());
             }
 
             statement.executeUpdate();
 
-            return user;
+            User u = new User(new UserDTO(id, user.getUsername(),new String(user.getPassword()),
+                    user.getAddress(), user.getCart(), user.isAdmin()));
+
+            userCache.cache(u);
+
+            return u;
         } catch (SQLException e){
             throw e;
         } finally {
@@ -107,49 +101,57 @@ public class UserRepositoryImpl implements Repository<User> {
     }
 
     @Override
-    public User delete(User user) throws SQLException {
+    public boolean delete(User user) throws SQLException {
         connection.beginRequest();
 
         try(PreparedStatement statement = connection.prepareStatement(
                 "DELETE FROM users WHERE id=?"
         )) {
-            statement.setString(1, user.getId().toString());
+            statement.setLong(1, user.getId());
 
             statement.executeUpdate();
-            return user;
+            userCache.delete(user.getId());
+            return true;
         }catch (SQLException e){
-            throw e;
+            return false;
         } finally {
             connection.endRequest();
         }
     }
 
     @Override
-    public User getById(UUID uuid) throws SQLException {
-        connection.beginRequest();
+    public User getById(Long id) throws SQLException {
+        try {
+            return userCache.fromCache(id);
+        }catch (NotFoundException e)
+        {
+            connection.beginRequest();
 
-        try(PreparedStatement statement = connection.prepareStatement(
-                "SELECT * FROM users WHERE id=?"
-        )) {
-            statement.setString(1, uuid.toString());
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT * FROM users WHERE id=?"
+            )) {
+                statement.setLong(1, id);
 
-            ResultSet resultSet = statement.executeQuery();
+                ResultSet resultSet = statement.executeQuery();
 
-            User user = null;
+                User user = null;
 
-            if (resultSet.next()){
-                user = new User(new UserDTO(
-                        UUID.fromString(resultSet.getString("id")),
-                        resultSet.getString("username"),
-                        resultSet.getString("password"),
-                        this.getAddressById(UUID.fromString(resultSet.getString("address_id"))),
-                        this.getCartById(UUID.fromString(resultSet.getString("cart_id"))),
-                        resultSet.getBoolean("admin")
-                ));
+                if (resultSet.next()) {
+                    user = new User(new UserDTO(
+                            resultSet.getLong("id"),
+                            resultSet.getString("username"),
+                            resultSet.getString("password"),
+                            this.getAddressById(UUID.fromString(resultSet.getString("address_id"))),
+                            this.getCartById(UUID.fromString(resultSet.getString("cart_id"))),
+                            resultSet.getBoolean("admin")
+                    ));
+                }
+
+                connection.endRequest();
+                if (user != null)
+                    userCache.cache(user);
+                return user;
             }
-
-            connection.endRequest();
-            return user;
         }
     }
 
@@ -165,7 +167,7 @@ public class UserRepositoryImpl implements Repository<User> {
 
             while (rs.next()){
                 User user = new User(new UserDTO(
-                        UUID.fromString(rs.getString("id")),
+                        rs.getLong("id"),
                         rs.getString("username"),
                         rs.getString("password"),
                         this.getAddressById(UUID.fromString(rs.getString("address_id"))),
@@ -185,9 +187,9 @@ public class UserRepositoryImpl implements Repository<User> {
     }
 
     //region private methods
-    private void saveAddress(Address address) throws SQLException {
+    private UUID saveAddress(Address address) throws SQLException {
         try(PreparedStatement addressStatement = connection.prepareStatement(
-                "INSERT INTO addresses (id, city, street, houseNumber, apartment) " +
+                "INSERT INTO addresses (id, city, street, \"houseNumber\", apartment) " +
                         "VALUES(?, ?, ?, ?, ?)"
         )) {
             addressStatement.setString(1, address.getId().toString());
@@ -200,20 +202,20 @@ public class UserRepositoryImpl implements Repository<User> {
         } catch (SQLException e) {
             throw e;
         }
+        return address.getId();
     }
 
-    private void saveCart(User user) throws SQLException {
+    private UUID saveCart(User user) throws SQLException {
         try(PreparedStatement cartStatement = connection.prepareStatement(
-                "INSERT INTO carts (id, user_id) " +
-                        "VALUES(?, ?)"
+                "INSERT INTO carts (id) " +
+                        "VALUES(?)"
         )) {
             cartStatement.setString(1, user.getCart().getId().toString());
-            cartStatement.setString(2, user.getId().toString());
             cartStatement.executeUpdate();
         }catch (SQLException e){
             throw e;
         }
-
+        return user.getCart().getId();
     }
 
     private Address getAddressById(UUID id) throws SQLException {
@@ -259,8 +261,7 @@ public class UserRepositoryImpl implements Repository<User> {
             if (resultSet.next()){
                 cart = new Cart(new CartDTO(
                         UUID.fromString(resultSet.getString("id")),
-                        new ArrayList<>(),
-                        UUID.fromString(resultSet.getString("user_id"))));
+                        new ArrayList<>()));
 
             }
             return cart;
@@ -269,56 +270,6 @@ public class UserRepositoryImpl implements Repository<User> {
         } finally {
             connection.endRequest();
         }
-    }
-
-    private void init(Connection connection){
-        //TODO delete souts and drop table
-        if (connection == null)
-            throw new ConnectionIsNullException();
-
-        try(Statement statement = connection.createStatement()){
-            String addresses = "CREATE TABLE IF NOT EXISTS addresses(" +
-                    "id VARCHAR(64) PRIMARY KEY, city VARCHAR(32), street VARCHAR(32), " +
-                    "houseNumber INT, apartment INT" +
-                    ")";
-
-            statement.execute(addresses);
-
-//            statement.execute("DROP TABLE users");
-
-            String users = "CREATE TABLE IF NOT EXISTS users (" +
-                    "id VARCHAR(64) PRIMARY KEY, " +
-                    "username VARCHAR(64) UNIQUE, " +
-                    "password VARCHAR(255), " +
-                    "address_id VARCHAR(64), " +
-                    "cart_id VARCHAR(64)," +
-                    "admin BOOL,\n" +
-                    "FOREIGN KEY (address_id)\n" +
-                    "REFERENCES addresses(id)\n" +
-                    "ON DELETE CASCADE)";
-
-            statement.execute(users);
-
-            String carts = "CREATE TABLE IF NOT EXISTS carts (" +
-                    "id VARCHAR(64) PRIMARY KEY, user_id VARCHAR(64))";
-            statement.execute(carts);
-
-            String goods = "CREATE TABLE IF NOT EXISTS goods (" +
-                    "id BIGSERIAL PRIMARY KEY, " +
-                    "cart_id VARCHAR(64), product_id VARCHAR(64), " +
-                    "FOREIGN KEY (cart_id) " +
-                    "REFERENCES carts (id))";
-            statement.execute(goods);
-
-
-        }catch (SQLException e) {
-            e.printStackTrace();
-            throw new SQLRuntimeException("Table products wasn't created");
-        }
-    }
-
-    public static Repository<User> getInstance() {
-        return instance;
     }
 
     //endregion

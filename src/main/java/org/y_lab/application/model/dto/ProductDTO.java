@@ -1,15 +1,13 @@
 package org.y_lab.application.model.dto;
 
-import java.util.UUID;
-
 public class ProductDTO {
-    private UUID id;
+    private Long id;
     private String title;
     private String description;
     private Double price;
     private Integer discount;
 
-    public ProductDTO(UUID id, String title, String description, Double price, Integer discount) {
+    public ProductDTO(Long id, String title, String description, Double price, Integer discount) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -17,7 +15,7 @@ public class ProductDTO {
         this.discount = discount;
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 

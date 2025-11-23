@@ -8,12 +8,10 @@ import java.util.UUID;
 public class CartDTO {
     private UUID id;
     private List<Product> products;
-    private UUID owner_id;
 
-    public CartDTO(UUID id, List<Product> products, UUID owner_id) {
+    public CartDTO(UUID id, List<Product> products) {
         this.id = id;
         this.products = products;
-        this.owner_id = owner_id;
     }
 
     public UUID getId() {
@@ -24,7 +22,4 @@ public class CartDTO {
         return products;
     }
 
-    public UUID getOwner_id() {
-        return owner_id;
-    }
 }

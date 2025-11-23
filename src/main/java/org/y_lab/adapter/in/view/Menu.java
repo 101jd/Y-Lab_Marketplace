@@ -1,6 +1,8 @@
 package org.y_lab.adapter.in.view;
 
+import liquibase.exception.LiquibaseException;
 import org.y_lab.adapter.in.view.interfaces.View;
+import org.y_lab.adapter.out.repository.ConnectionManager;
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
 import org.y_lab.application.exceptions.UsernameNotUniqueException;
 import org.y_lab.application.model.Address;
@@ -8,12 +10,10 @@ import org.y_lab.application.model.MarketPlace.Product;
 import org.y_lab.application.model.User;
 import org.y_lab.application.model.dto.ProductDTO;
 
+import java.sql.SQLException;
 import java.util.Scanner;
-import java.util.UUID;
 
 
-//TODO:
-// cart fetching
 public class Menu {
     View view;
     Scanner scanner;
@@ -99,8 +99,10 @@ public class Menu {
                     if (user != null) {
                         System.out.println("Enter product id");
                         String uuid = scanner.nextLine();
-
-                        System.out.println(view.addProductToCart(UUID.fromString(uuid), this.user));
+                        if (tryParseLong(uuid)) {
+                            Long productId = Long.valueOf(uuid);
+                            System.out.println(view.addProductToCart(productId, this.user));
+                        }
                     } else System.out.println("Please, register or sign in");
                  break;
                 }
@@ -111,7 +113,7 @@ public class Menu {
                         Integer qty = this.getQty(scanner);
                         if (qty != null) {
                             try {
-                                view.addItemToPlatform(product, qty);
+                                view.addItemToPlatform(this.user, product, qty);
                             } catch (QtyLessThanZeroException e) {
                                 System.out.println(e.getMessage());
                             }
@@ -124,28 +126,38 @@ public class Menu {
                     if (this.user.isAdmin()){
                         System.out.println("Enter uuid of editing Product:");
                         String uuid = scanner.nextLine();
-                        try {
-                            ProductDTO product = this.editProduct(scanner, UUID.fromString(uuid));
-                            Integer qty = this.getQty(scanner);
-                            System.out.println(view.editItem(UUID.fromString(uuid), product, qty));
-                        } catch (QtyLessThanZeroException e) {
-                            System.out.println(e.getMessage());
-                        }
+                        Long id = null;
+                        if (tryParseLong(uuid))
+                            id = Long.parseLong(uuid);
+                        if (id != null)
+                            try {
+                                ProductDTO product = this.editProduct(scanner, id);
+                                Integer qty = this.getQty(scanner);
+                                System.out.println(view.editItem(this.user, id, product, qty));
+                            } catch (QtyLessThanZeroException e) {
+                                System.out.println(e.getMessage());
+                            }
                     } else System.out.println("You are not an admin!");
                     break;
                 }
 
                 case "q" : {
                     flag = false;
-                    view.saveCart(this.user);
+                    if (this.user != null)
+                        view.saveCart(this.user);
                     scanner.close();
+                    try {
+                        ConnectionManager.getInstance().close();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    } catch (LiquibaseException e) {
+                        throw new RuntimeException(e);
+                    }
                     break;
                 }
 
                 default:
                     System.out.println("Unknown command");
-
-
             }
 
         }
@@ -157,7 +169,7 @@ public class Menu {
         boolean valid = false;
         while (!valid){
             System.out.println("All fields must be filled");
-            product = editProduct(scanner, UUID.randomUUID());
+            product = editProduct(scanner, null);
             if (product.getTitle() != null &&
             product.getDescription() != null
             && product.getPrice() != null &&
@@ -169,14 +181,13 @@ public class Menu {
 
     private Integer getQty(Scanner scanner) {
         System.out.println("Enter qty");
-        Integer integer = null;
+        Integer qty = null;
         boolean b = false;
         String s = scanner.nextLine();
         b = tryParseInt(s);
         if (b)
-            integer = Integer.parseInt(s);
-        System.out.println("return reached");
-        return integer;
+            qty = Integer.parseInt(s);
+        return qty;
     }
 
     private User register(Scanner scanner) {
@@ -222,7 +233,7 @@ public class Menu {
 
     }
 
-    private ProductDTO editProduct(Scanner scanner, UUID id){
+    private ProductDTO editProduct(Scanner scanner, Long id){
         System.out.println("Enter product title");
         String title = scanner.nextLine();
         if (title.length() == 0)
@@ -265,6 +276,15 @@ public class Menu {
             Double.parseDouble(s);
             return true;
         } catch (NumberFormatException r){
+            return false;
+        }
+    }
+
+    private boolean tryParseLong(String s){
+        try {
+            Long.parseLong(s);
+            return true;
+        }catch (NumberFormatException e){
             return false;
         }
     }

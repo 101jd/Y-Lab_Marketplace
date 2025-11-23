@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+                   logicalFilePath="db/changelog/changelog.xml">
+    <include file="default-values.xml" relativeToChangelogFile="true"/>
+    <changeSet id="003-insert-user" author="y_lab">
+        <insert tableName="addresses" schemaName="mps">
+            <column name="id" value="${addressUuid}"/>
+            <column name="city" value="17"/>
+            <column name="street" value="Main"/>
+            <column name="houseNumber" valueNumeric="11"/>
+            <column name="apartment" valueNumeric="2"/>
+        </insert>
+        <insert tableName="carts" schemaName="mps">
+            <column name="id" value="${cartUuid}"/>
+        </insert>
+        <insert tableName="users" schemaName="mps">
+            <column name="username" value="ivan"/>
+            <column name="password" value="NULL"/>
+            <column name="address_id" value="${addressUuid}"/>
+            <column name="cart_id" value="${cartUuid}"/>
+            <column name="admin" value="false"/>
+        </insert>
+
+    </changeSet>
+</databaseChangeLog>

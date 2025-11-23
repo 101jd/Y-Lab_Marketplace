@@ -1,53 +1,37 @@
 package org.y_lab.adapter.out.repository;
 
+import liquibase.exception.LiquibaseException;
+import org.y_lab.adapter.out.repository.caches.ItemCache;
+import org.y_lab.adapter.out.repository.interfaces.Cache;
 import org.y_lab.adapter.out.repository.interfaces.Repository;
-import org.y_lab.application.exceptions.ConnectionIsNullException;
+import org.y_lab.application.exceptions.NotFoundException;
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
 import org.y_lab.application.exceptions.SQLRuntimeException;
 import org.y_lab.application.model.MarketPlace.Item;
 import org.y_lab.application.model.MarketPlace.Product;
 import org.y_lab.application.model.dto.ProductDTO;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
 
 
-public class MarketPlaceRepository implements Repository<Item> {
+public class MarketPlaceRepository implements Repository<Long, Item> {
 
     private Connection connection;
+    private Cache<Long, Item> itemCache;
 
-    public MarketPlaceRepository(Connection connection) {
+
+
+    public MarketPlaceRepository(Connection connection){
         this.connection = connection;
-        init(connection);
+        this.itemCache = new ItemCache();
     }
 
-    public MarketPlaceRepository() throws SQLException {
-        Properties properties = new Properties();
-        try {
-            InputStream loader = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream("application.properties");
-            properties.load(loader);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Connection connection = DriverManager.getConnection(
-                properties.getProperty("url"), properties.getProperty("username"),
-                        properties.getProperty("password"));
+    public MarketPlaceRepository() throws SQLException, LiquibaseException {
+        this(ConnectionManager.getInstance().getConnection());
 
-        this.connection = connection;
-        init(connection);
     }
-    /////////////////////////////////////////////////////////////////
-
-
-
-
-    //////////////////////////////////////////////////////////////////////////////////////
 
     /**
      *
@@ -56,18 +40,28 @@ public class MarketPlaceRepository implements Repository<Item> {
      * @throws SQLException
      */
     @Override
-    public UUID save(Item item) throws SQLException {
+    public Long save(Item item) throws SQLException {
         Product product = item.getProduct();
         connection.beginRequest();
 
         try(PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO products (id, title, description, price, discount) " +
-                        "VALUES(?, ?, ?, ?, ?)")) {
-            statement.setString(1, product.getId().toString());
-            statement.setString(2, product.getTitle());
-            statement.setString(3, product.getDescription());
-            statement.setDouble(4, product.getPrice());
-            statement.setInt(5, product.getDiscount());
+                "INSERT INTO products (title, description, price, discount) " +
+                        "VALUES(?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+
+            statement.setString(1, product.getTitle());
+            statement.setString(2, product.getDescription());
+            statement.setDouble(3, product.getPrice());
+            statement.setInt(4, product.getDiscount());
+
+            statement.executeUpdate();
+
+            ResultSet set = statement.getGeneratedKeys();
+
+            Long id = null;
+
+            if (set.next()){
+                id = set.getLong("id");
+            } else throw new SQLRuntimeException("Item save failed");
 
             try(PreparedStatement itemStatement = connection.prepareStatement(
                     "INSERT INTO items (product_id, qty)\n" +
@@ -75,16 +69,15 @@ public class MarketPlaceRepository implements Repository<Item> {
                             "ON CONFLICT (product_id)\n" +
                             "DO UPDATE SET qty = EXCLUDED.qty;\n"
             )) {
-                itemStatement.setString(1, product.getId().toString());
+                itemStatement.setLong(1, id);
                 itemStatement.setInt(2, item.getQty());
 
-                statement.executeUpdate();
                 itemStatement.executeUpdate();
+
+
+                return id;
+
             }
-
-
-
-            return product.getId();
         } catch (SQLException e){
             throw e;
         }finally {
@@ -94,13 +87,13 @@ public class MarketPlaceRepository implements Repository<Item> {
 
     /**
      *
-     * @param uuid of modifying Product
+     * @param id of modifying Product
      * @param item modified
      * @return modified Product
      * @throws SQLException
      */
     @Override
-    public Item update(UUID uuid, Item item) throws SQLException {
+    public Item update(Long id, Item item) throws SQLException {
         Product product = item.getProduct();
         connection.beginRequest();
 
@@ -108,12 +101,12 @@ public class MarketPlaceRepository implements Repository<Item> {
                 "UPDATE items SET qty=? WHERE product_id=?"
         )) {
             statement.setInt(1, item.getQty());
-            statement.setString(2, uuid.toString());
+            statement.setLong(2, id);
 
             statement.executeUpdate();
         }
 
-        if (product.equals(this.getById(uuid).getProduct())) {
+        if (product.equals(this.getById(id).getProduct())) {
             return item;
         }
 
@@ -128,7 +121,7 @@ public class MarketPlaceRepository implements Repository<Item> {
             statement.setString(2, product.getDescription());
             statement.setDouble(3, product.getPrice());
             statement.setInt(4, product.getDiscount());
-            statement.setString(5, uuid.toString());
+            statement.setLong(5, id);
 
             statement.executeUpdate();
 
@@ -138,18 +131,25 @@ public class MarketPlaceRepository implements Repository<Item> {
             connection.endRequest();
         }
 
-        System.out.println("repo update qty: " + item.getQty());
-        return item;
+        try {
+            Item i = new Item(new Product(new ProductDTO(id, product.getTitle(), product.getDescription(),
+                    product.getPrice(), product.getDiscount())), item.getQty());
+            itemCache.cache(i);
+            return i;
+        } catch (QtyLessThanZeroException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
      * Delete by item
+     *
      * @param item to delete
      * @return deleted Product
      * @throws SQLException
      */
     @Override
-    public Item delete(Item item) throws SQLException {
+    public boolean delete(Item item) throws SQLException {
         Product product = item.getProduct();
         connection.beginRequest();
 
@@ -157,13 +157,14 @@ public class MarketPlaceRepository implements Repository<Item> {
                 "DELETE FROM products WHERE id=?"
         )) {
 
-            statement.setString(1, product.getId().toString());
+            statement.setLong(1, product.getId());
 
             statement.executeUpdate();
-            return item;
+            itemCache.delete(product.getId());
+            return true;
         }catch (SQLException e){
-
-            throw e;
+            e.printStackTrace();
+            return false;
         }finally {
             connection.endRequest();
         }
@@ -171,28 +172,31 @@ public class MarketPlaceRepository implements Repository<Item> {
 
     /**
      * Get Item by product_id
-     * @param uuid - Product id
+     * @param id - Product id
      * @return Item by id
      * @throws SQLException
      */
     @Override
-    public Item getById(UUID uuid) throws SQLException {
-        String sql = """
-                        SELECT p.id, p.title, p.description, p.price, p.discount, i.qty
-                        FROM items i
-                        JOIN products p ON i.product_id = p.id
-                        WHERE p.id = ?
-                """;
-        Item item = null;
-        connection.beginRequest();
+    public Item getById(Long id) throws SQLException {
+        try {
+            return itemCache.fromCache(id);
+        }catch (NotFoundException e) {
+            String sql = """
+                            SELECT p.id, p.title, p.description, p.price, p.discount, i.qty
+                            FROM items i
+                            JOIN products p ON i.product_id = p.id
+                            WHERE p.id = ?
+                    """;
+            Item item = null;
+            connection.beginRequest();
 
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, uuid.toString());
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setLong(1, id);
 
                 try (ResultSet rs = statement.executeQuery()) {
                     if (rs.next()) {
                         Product product = new Product(new ProductDTO(
-                                UUID.fromString(rs.getString("id")),
+                                rs.getLong("id"),
                                 rs.getString("title"),
                                 rs.getString("description"),
                                 rs.getDouble("price"),
@@ -200,18 +204,22 @@ public class MarketPlaceRepository implements Repository<Item> {
                         ));
 
                         item = new Item(product, rs.getInt("qty"));
+                        itemCache.cache(item);
 
                     }
-                } catch (QtyLessThanZeroException e) {
-                    throw new RuntimeException(e);
+                } catch (QtyLessThanZeroException ex) {
+                    throw new RuntimeException(ex);
 
-                }finally {
+                } finally {
                     connection.endRequest();
                 }
 
-        }
 
-        return item;
+            }
+
+            itemCache.cache(item);
+            return item;
+        }
     }
 
     /**
@@ -235,7 +243,7 @@ public class MarketPlaceRepository implements Repository<Item> {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     Product product = new Product(new ProductDTO(
-                            UUID.fromString(rs.getString("id")),
+                            rs.getLong("id"),
                             rs.getString("title"),
                             rs.getString("description"),
                             rs.getDouble("price"),
@@ -254,41 +262,5 @@ public class MarketPlaceRepository implements Repository<Item> {
         }
 
         return items;
-    }
-
-    private void init(Connection connection){
-        if (connection == null)
-            throw new ConnectionIsNullException();
-
-        try(Statement statement = connection.createStatement()){
-
-            statement.execute("""
-                    CREATE TABLE IF NOT EXISTS products (
-                    id VARCHAR(64) PRIMARY KEY,
-                    title VARCHAR(64),
-                    description VARCHAR(255),
-                    price FLOAT,
-                    discount INT);""");
-            statement.execute(
-                    """
-                            CREATE TABLE IF NOT EXISTS goods(
-                            id BIGSERIAL PRIMARY KEY,
-                            cart_id VARCHAR(64), product_id VARCHAR(64),
-                            FOREIGN KEY (product_id)
-                            REFERENCES products (id));"""
-            );
-
-            statement.execute(
-                    """
-                            CREATE TABLE IF NOT EXISTS items (
-                            product_id VARCHAR(64) PRIMARY KEY,
-                            qty INT,
-                            FOREIGN KEY (product_id)
-                            REFERENCES products(id) ON DELETE CASCADE);"""
-            );
-        }catch (SQLException e) {
-            e.printStackTrace();
-            throw new SQLRuntimeException("Tables wasn't created");
-        }
     }
 }
