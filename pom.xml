@@ -24,6 +24,11 @@
         <testcontainers.version>1.21.3</testcontainers.version>
         <web-servlet.version>6.1.0</web-servlet.version>
         <tomcat.version>10.1.41</tomcat.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <jackson-core.version>3.0.2</jackson-core.version>
+        <jackson-databind.version>2.20.1</jackson-databind.version>
+        <aspectj.version>1.9.24</aspectj.version>
+        <validation.version>3.1.1</validation.version>
 
 
     </properties>
@@ -130,31 +135,31 @@
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>1.6.3</version>
+            <version>${mapstruct.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/tools.jackson.core/jackson-core -->
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>3.0.2</version>
+            <version>${jackson-core.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.20.1</version>
+            <version>${jackson-databind.version}</version>
         </dependency>
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.9.24</version>
+            <version>${aspectj.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/jakarta.validation/jakarta.validation-api -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
-            <version>3.1.1</version>
+            <version>${validation.version}</version>
         </dependency>
     </dependencies>
 
@@ -180,9 +185,7 @@
                     <complianceLevel>16</complianceLevel>
                     <source>16</source>
                     <target>16</target>
-<!--                    <showWeaverInfo>true</showWeaverInfo>-->
                     <verbose>true</verbose>
-<!--                    <XLint>ignore</XLint>-->
                     <encoding>UTF-8</encoding>
                 </configuration>
                 <executions>

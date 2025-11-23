@@ -64,7 +64,6 @@ public class PlatformServiceImplTest {
         Mockito.when(itemRepository.getAll()).thenReturn(List.of(item));
         List<Item> items = service.getAllProducts();
 
-        System.out.println(items);
         Assertions.assertEquals(items, List.of(item));
     }
 
@@ -74,8 +73,6 @@ public class PlatformServiceImplTest {
     @Test
     public void testFilterOver10() throws SQLException {
         Mockito.when(itemRepository.getAll()).thenReturn(List.of(item));
-        List<Item> items = itemRepository.getAll();
-        System.out.println(items);
 
         Assertions.assertArrayEquals(service.filter(i -> i.getProduct().getTotalPrice() > 10).toArray(), List.of().toArray());
     }
@@ -86,14 +83,10 @@ public class PlatformServiceImplTest {
     @Test
     public void testFilterUnder10() throws SQLException {
         Mockito.when(itemRepository.getAll()).thenReturn(List.of(item));
-        List<Item> items = itemRepository.getAll();
-        System.out.println(items);
 
-        List<Item> item1 = service.filter(i -> i.getProduct().getTotalPrice() < 10.0);
+        List<Item> items = service.filter(i -> i.getProduct().getTotalPrice() < 10.0);
 
-        System.out.println("Item under 10: " + item1);
-
-        Assertions.assertEquals(item1, List.of(item));
+        Assertions.assertEquals(items, List.of(item));
     }
 
 }
