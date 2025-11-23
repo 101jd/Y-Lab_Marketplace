@@ -23,7 +23,7 @@ public class CartCache implements Cache<UUID, Cart> {
     }
 
     @Override
-    public Cart fromCache(UUID id) throws NotFoundException {
+    public Cart getFromCache(UUID id) throws NotFoundException {
         Cart cart = cartMap.get(id);
         if (cart == null)
             throw new NotFoundException("Cart not found");

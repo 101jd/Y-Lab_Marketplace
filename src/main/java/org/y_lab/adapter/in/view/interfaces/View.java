@@ -1,14 +1,13 @@
 package org.y_lab.adapter.in.view.interfaces;
 
+import org.y_lab.application.exceptions.ProductNotFoundException;
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
 import org.y_lab.application.exceptions.UsernameNotUniqueException;
 import org.y_lab.application.model.MarketPlace.Item;
 import org.y_lab.application.model.MarketPlace.Product;
 import org.y_lab.application.model.User;
-import org.y_lab.application.model.dto.ProductDTO;
 
 import java.util.List;
-import java.util.UUID;
 
 public interface View {
     /**
@@ -33,7 +32,7 @@ public interface View {
      * @param user cart owner
      * @return modified Item
      */
-    Item addProductToCart(Long id, User user);
+    Item addProductToCart(Long id, User user) throws ProductNotFoundException;
 
     /**
      *
@@ -67,12 +66,11 @@ public interface View {
     /**
      *
      * @param itemId of modifying product item
-     * @param newProduct
-     * @param qty new qty
+     * @param item new item
      * @return Modified Item
      * @throws QtyLessThanZeroException
      */
-    Item editItem(User user, Long itemId, ProductDTO newProduct, Integer qty) throws QtyLessThanZeroException;
+    Item editItem(User user, Long itemId, Item item) throws QtyLessThanZeroException, ProductNotFoundException;
 
     void saveCart(User user);
 }

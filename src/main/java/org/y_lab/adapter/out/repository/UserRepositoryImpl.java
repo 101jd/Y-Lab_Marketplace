@@ -122,7 +122,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
     @Override
     public User getById(Long id) throws SQLException {
         try {
-            return userCache.fromCache(id);
+            return userCache.getFromCache(id);
         }catch (NotFoundException e)
         {
             connection.beginRequest();

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 public class AuditionEntity {
     private Long id;
     private Long user_id;
-    private Date time;
+    private Date timeStamp;
     private String message;
 
     /**
@@ -22,7 +22,7 @@ public class AuditionEntity {
     public AuditionEntity(Long user_id, String message) {
         this.id = null;
         this.user_id = user_id;
-        this.time = java.sql.Date.valueOf(LocalDate.now());
+        this.timeStamp = java.sql.Date.valueOf(LocalDate.now());
         this.message = message;
     }
 
@@ -34,8 +34,8 @@ public class AuditionEntity {
         return user_id;
     }
 
-    public Date getTime() {
-        return time;
+    public Date getTimeStamp() {
+        return timeStamp;
     }
 
     public String getMessage() {

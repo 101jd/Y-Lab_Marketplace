@@ -59,7 +59,7 @@ public class CartRepository implements SimpleRepository<UUID, Cart> {
             User user = userRepository.getById(userId);
 
             try {
-                return cartCache.fromCache(user.getCart().getId());
+                return cartCache.getFromCache(user.getCart().getId());
             } catch (NotFoundException e) {
 
                 try (PreparedStatement statement = connection.prepareStatement(

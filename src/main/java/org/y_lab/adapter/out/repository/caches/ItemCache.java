@@ -24,7 +24,7 @@ public class ItemCache implements Cache<Long, Item> {
     }
 
     @Override
-    public Item fromCache(Long id) throws NotFoundException {
+    public Item getFromCache(Long id) throws NotFoundException {
         Item item = itemMap.get(id);
 
         if (item == null)

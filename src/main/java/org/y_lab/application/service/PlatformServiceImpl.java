@@ -27,17 +27,18 @@ public class PlatformServiceImpl implements Service {
     private Repository<Long, User> userRepository;
     private SimpleRepository<UUID, Cart> cartSaveRepo;
     private Repository<Long, Item> mpRepository;
-    private SaveRepository<Long, AuditionEntity> auditionRepository;
     private Platform platform;
 
-    public PlatformServiceImpl() throws SQLException, LiquibaseException {
-        this.userRepository = new UserRepositoryImpl();
-        this.mpRepository = new MarketPlaceRepository();
-        this.platform = new Platform();
-        this.cartSaveRepo = new CartRepository();
-        this.auditionRepository = new AuditionRepository();
+    public PlatformServiceImpl(Repository<Long, User> userRepository, SimpleRepository<UUID, Cart> cartSaveRepo, Repository<Long, Item> mpRepository) {
+        this.userRepository = userRepository;
+        this.cartSaveRepo = cartSaveRepo;
+        this.mpRepository = mpRepository;
     }
 
+    public PlatformServiceImpl() throws SQLException, LiquibaseException {
+        this(new UserRepositoryImpl(), new CartRepository(), new MarketPlaceRepository());
+
+    }
 
     /**
      * Username must be unique
@@ -49,7 +50,6 @@ public class PlatformServiceImpl implements Service {
     public User register(User user) throws UsernameNotUniqueException {
         try {
             userRepository.save(user);
-            auditionRepository.save(new AuditionEntity(user.getId(), "Registered"));
             return user;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -66,20 +66,19 @@ public class PlatformServiceImpl implements Service {
      * @return username exists & passwords are equal
      */
     @Override
-    public User signIn(String username, String password) {
+    public User signIn(String username, String password) throws WrongUsernameOrPasswordException,
+            UserNotFoundRuntimeException {
         try {
             User u = userRepository.getAll().stream().filter(user -> user.getUsername().equals(username))
                     .findFirst().get();
             Long id = u.getId();
-            auditionRepository.save(new AuditionEntity(id, "trying to login"));
             if (u.comparePasswords(password)){
                 u.setCart(cartSaveRepo.getById(u.getId()));
-                auditionRepository.save(new AuditionEntity(id, "successfully logged in"));
                 return u;
             }
             throw new WrongUsernameOrPasswordException();
         } catch (SQLException e) {
-            throw new UserNotFoundRuntimeException();
+            throw new UserNotFoundRuntimeException(username);
         }
     }
 
@@ -104,8 +103,6 @@ public class PlatformServiceImpl implements Service {
         Item i = platform.releaseProductToCart(item, user.getCart());
         try {
             mpRepository.update(i.getProduct().getId(), i);
-            auditionRepository.save(new AuditionEntity(user.getId(), "added item to cart " +
-                    item.getProduct().getId()));
         } catch (SQLException e) {
             throw new SQLRuntimeException(e.getMessage());
         }
@@ -120,7 +117,7 @@ public class PlatformServiceImpl implements Service {
      * @throws ProductNotFoundException if product(item) not found
      */
     @Override
-    public Item addProductToCart(Long id, User user) {
+    public Item addProductToCart(Long id, User user) throws ProductNotFoundException {
         try {
             Item item = mpRepository.getById(id);
             return addProductToCart(item, user);
@@ -131,6 +128,15 @@ public class PlatformServiceImpl implements Service {
 
     }
 
+    @Override
+    public User getById(Long id) throws UserNotFoundRuntimeException {
+        try {
+            return userRepository.getById(id);
+        } catch (SQLException e) {
+            throw new UserNotFoundRuntimeException(String.valueOf(id));
+        }
+    }
+
     /**
      * Saves Item in Repository
      * @param item to save
@@ -138,15 +144,13 @@ public class PlatformServiceImpl implements Service {
      * @throws SQLRuntimeException if something wrong with connection
      */
     @Override
-    public Long addItem(User user, Item item) {
+    public Long addItem(Item item) throws SQLException {
         try {
             Long id = mpRepository.save(item);
             this.platform.addItem(item);
-            auditionRepository.save(new AuditionEntity(user.getId(), "Added item to platform "
-                    + item.getProduct().getId() + " with qty " + item.getQty()));
             return id;
         } catch (SQLException e){
-            throw new SQLRuntimeException(e.getMessage());
+            throw e;
         }
     }
 
@@ -157,9 +161,8 @@ public class PlatformServiceImpl implements Service {
      * @return modified Product
      */
     @Override
-    public Item editProduct(User user, Long id, Item item) {
+    public Item editProduct(Long id, Item item) throws ProductNotFoundException {
         try {
-            auditionRepository.save(new AuditionEntity(user.getId(), "Edit product " + id));
             return mpRepository.update(id, item);
         } catch (Exception e){
             throw new ProductNotFoundException();
@@ -171,9 +174,8 @@ public class PlatformServiceImpl implements Service {
      * @return deleted Item
      */
     @Override
-    public boolean deleteProduct(User user, Item item) {
+    public boolean deleteProduct(Item item) throws ProductNotFoundException {
         try {
-            auditionRepository.save(new AuditionEntity(user.getId(), "Deleted product " + item.getProduct().getId()));
             return mpRepository.delete(item);
         } catch (Exception e){
             throw new ProductNotFoundException();
@@ -201,9 +203,8 @@ public class PlatformServiceImpl implements Service {
      * @throws ProductNotFoundException in Runtime
      */
     @Override
-    public Item findById(User user, Long productId) throws ProductNotFoundException {
+    public Item findById(Long productId) throws ProductNotFoundException {
         try {
-            auditionRepository.save(new AuditionEntity(user.getId(), "Looking for " + productId));
             return mpRepository.getById(productId);
         } catch (SQLException e){
             throw new ProductNotFoundException();
@@ -233,7 +234,7 @@ public class PlatformServiceImpl implements Service {
      * @throws WrongDiscountException in Runtime
      */
     @Override
-    public Item setDiscount(Long id, int discount) throws WrongDiscountException {
+    public Item setDiscount(Long id, int discount) throws WrongDiscountException, ProductNotFoundException {
         try {
             Item item = mpRepository.getById(id);
             Product product = item.getProduct();
@@ -248,7 +249,7 @@ public class PlatformServiceImpl implements Service {
 
     @Override
     public UUID saveCart(User user) throws SQLException {
-        auditionRepository.save(new AuditionEntity(user.getId(), "Cart saved"));
         return cartSaveRepo.save(user.getCart());
     }
+
 }

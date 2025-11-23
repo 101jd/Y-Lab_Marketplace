@@ -20,8 +20,8 @@ public class Cart {
      * @param dto to copy fields
      */
     public Cart(CartDTO dto){
-        this.id = dto.getId();
-        this.products = dto.getProducts();
+        this.id = dto.getId() == null ? UUID.randomUUID() : dto.getId();
+        this.products = dto.getProducts() == null ? new ArrayList<>() : dto.getProducts();
     }
 
     /**

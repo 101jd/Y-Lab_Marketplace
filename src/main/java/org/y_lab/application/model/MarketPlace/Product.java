@@ -12,8 +12,8 @@ public class Product {
     private Long id;
     private String title;
     private String description;
-    private double price;
-    private int discount;
+    private Double price;
+    private Integer discount;
 
 
     /**
@@ -81,11 +81,11 @@ public class Product {
         return description;
     }
 
-    public double getPrice() {
+    public Double getPrice() {
         return price;
     }
 
-    public int getDiscount() {
+    public Integer getDiscount() {
         return discount;
     }
 

@@ -13,21 +13,26 @@ public class User {
     private byte[] password;
     private Address address;
     private Cart cart;
-    private boolean admin;
+    private Boolean admin;
 
     /**
      * Constructor from DTO object
      * @param dto to copy fields
      */
     public User(UserDTO dto){
-        this.id = dto.getId();
+        if (dto.getId() != null)
+            this.id = dto.getId();
+        else this.id = 0L;
         this.username = dto.getUsername();
         this.password = encodePassword(this.username, dto.getPassword());
         this.address = dto.getAddress();
-        this.cart = dto.getCart();
-        this.admin = dto.isAdmin();
+        this.cart = dto.getCart() == null ? new Cart() : dto.getCart();
+        this.admin = dto.isAdmin() == null ? false : dto.isAdmin();
     }
 
+    public User(){
+
+    }
 
     /**
      * Base constructor

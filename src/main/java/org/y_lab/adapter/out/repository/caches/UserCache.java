@@ -22,7 +22,7 @@ public class UserCache implements Cache<Long, User> {
     }
 
     @Override
-    public User fromCache(Long id) throws NotFoundException {
+    public User getFromCache(Long id) throws NotFoundException {
         User user = userMap.get(id);
         if (user == null)
             throw new NotFoundException("User not found");
