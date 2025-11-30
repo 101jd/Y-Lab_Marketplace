@@ -26,6 +26,10 @@ public class Address {
         this.apartment = dto.getApartment();
     }
 
+    public Address(){
+        this.id = UUID.randomUUID();
+    }
+
     /**
      * Base constructor
      * @param city

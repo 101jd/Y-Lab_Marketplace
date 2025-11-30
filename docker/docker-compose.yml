@@ -16,7 +16,7 @@ services:
     environment:
       POSTGRES_PASSWORD: pass123456
       POSTGRES_USER: postgres
-      POSTGRES_DB: mpdb
+      POSTGRES_DB: marketdb
     ports:
       - 11908:5432
 
@@ -25,3 +25,5 @@ services:
     restart: always
     ports:
       - 8080:8080
+    depends_on:
+      - db

@@ -3,9 +3,11 @@ package org.y_lab.adapter.in.view;
 import liquibase.exception.LiquibaseException;
 import org.y_lab.adapter.in.view.interfaces.View;
 import org.y_lab.adapter.out.repository.ConnectionManager;
+import org.y_lab.application.exceptions.ProductNotFoundException;
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
 import org.y_lab.application.exceptions.UsernameNotUniqueException;
 import org.y_lab.application.model.Address;
+import org.y_lab.application.model.MarketPlace.Item;
 import org.y_lab.application.model.MarketPlace.Product;
 import org.y_lab.application.model.User;
 import org.y_lab.application.model.dto.ProductDTO;
@@ -86,9 +88,9 @@ public class Menu {
                     boolean notNumber = true;
                     while (notNumber){
                         String string = scanner.nextLine();
-                        if (tryParseDouble(string)){
+                        Double maxPrice = tryParseDouble(string);
+                        if (maxPrice != null){
                             notNumber = false;
-                            double maxPrice = Double.parseDouble(string);
                             view.findProductsByPrice(maxPrice).stream().forEach(System.out::println);
                         }
                     }
@@ -98,11 +100,15 @@ public class Menu {
                 case "add" : {
                     if (user != null) {
                         System.out.println("Enter product id");
-                        String uuid = scanner.nextLine();
-                        if (tryParseLong(uuid)) {
-                            Long productId = Long.valueOf(uuid);
-                            System.out.println(view.addProductToCart(productId, this.user));
-                        }
+                        String id = scanner.nextLine();
+                        Long productId = tryParseLong(id);
+                        if (productId != null) {
+                            try {
+                                System.out.println(view.addProductToCart(productId, this.user));
+                            } catch (ProductNotFoundException e) {
+                                System.out.println("Product not found");
+                            }
+                        } else System.out.println("Wrong id");
                     } else System.out.println("Please, register or sign in");
                  break;
                 }
@@ -124,18 +130,19 @@ public class Menu {
 
                 case "edit" : {
                     if (this.user.isAdmin()){
-                        System.out.println("Enter uuid of editing Product:");
-                        String uuid = scanner.nextLine();
-                        Long id = null;
-                        if (tryParseLong(uuid))
-                            id = Long.parseLong(uuid);
+                        System.out.println("Enter id of editing Product:");
+                        String inp = scanner.nextLine();
+                        Long id = tryParseLong(inp);
                         if (id != null)
                             try {
                                 ProductDTO product = this.editProduct(scanner, id);
                                 Integer qty = this.getQty(scanner);
-                                System.out.println(view.editItem(this.user, id, product, qty));
+                                Item item = new Item(new Product(product), qty);
+                                System.out.println(view.editItem(this.user, id, item));
                             } catch (QtyLessThanZeroException e) {
                                 System.out.println(e.getMessage());
+                            } catch (ProductNotFoundException e) {
+                                System.out.println("Product not found");
                             }
                     } else System.out.println("You are not an admin!");
                     break;
@@ -181,12 +188,9 @@ public class Menu {
 
     private Integer getQty(Scanner scanner) {
         System.out.println("Enter qty");
-        Integer qty = null;
         boolean b = false;
         String s = scanner.nextLine();
-        b = tryParseInt(s);
-        if (b)
-            qty = Integer.parseInt(s);
+        Integer qty = tryParseInt(s);
         return qty;
     }
 
@@ -206,18 +210,19 @@ public class Menu {
         while (flag){
             System.out.println("Enter house number");
             String houseNumber = scanner.nextLine();
-            if (tryParseInt(houseNumber)){
+            house = tryParseInt(houseNumber);
+            if (house != null){
                 flag = false;
-                house = Integer.parseInt(houseNumber);
             }
         }
         flag = true;
         while (flag){
             System.out.println("Enter apartment");
             String apart = scanner.nextLine();
-            if (tryParseInt(apart)){
+
+            apartment = tryParseInt(apart);
+            if (apartment != null){
                 flag = false;
-                apartment = Integer.parseInt(apart);
             }
         }
         System.out.println("Are you admin?");
@@ -248,44 +253,39 @@ public class Menu {
 
         System.out.println("Enter product price");
         String in = scanner.nextLine();
-        if (tryParseDouble(in)){
-            price = Double.parseDouble(in);
-        }
+        price = tryParseDouble(in);
 
         System.out.println("Enter discount");
         in = scanner.nextLine();
-        if (tryParseInt(in)){
-            discount = Integer.parseInt(in);
-        }
+        discount = tryParseInt(in);
 
         return new ProductDTO(id, title, descrption, price, discount);
     }
 
 
-    private boolean tryParseInt(String s){
+    private Integer tryParseInt(String s){
         try {
-            Integer.parseInt(s);
-            return true;
+            return Integer.parseInt(s);
+
         }catch (NumberFormatException e){
-            return false;
+            return null;
         }
     }
 
-    private boolean tryParseDouble(String s){
+    private Double tryParseDouble(String s){
         try {
-            Double.parseDouble(s);
-            return true;
+            return Double.parseDouble(s);
         } catch (NumberFormatException r){
-            return false;
+            return null;
         }
     }
 
-    private boolean tryParseLong(String s){
+    private Long tryParseLong(String s){
         try {
-            Long.parseLong(s);
-            return true;
+            return Long.parseLong(s);
+
         }catch (NumberFormatException e){
-            return false;
+            return null;
         }
     }
 }

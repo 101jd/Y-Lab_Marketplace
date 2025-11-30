@@ -179,7 +179,7 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
     @Override
     public Item getById(Long id) throws SQLException {
         try {
-            return itemCache.fromCache(id);
+            return itemCache.getFromCache(id);
         }catch (NotFoundException e) {
             String sql = """
                             SELECT p.id, p.title, p.description, p.price, p.discount, i.qty

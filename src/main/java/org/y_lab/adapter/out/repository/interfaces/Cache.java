@@ -2,8 +2,6 @@ package org.y_lab.adapter.out.repository.interfaces;
 
 import org.y_lab.application.exceptions.NotFoundException;
 
-import java.util.UUID;
-
 /**
  * Cache interface for more fast access to entities w/o request to DB
  * @param <K> key Type
@@ -23,7 +21,7 @@ public interface Cache<K, T> {
      * @return object
      * @throws NotFoundException if key wrong or value not presented
      */
-    T fromCache(K id) throws NotFoundException;
+    T getFromCache(K id) throws NotFoundException;
 
     /**
      * delete from cache

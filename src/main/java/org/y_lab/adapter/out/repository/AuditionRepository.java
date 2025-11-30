@@ -19,12 +19,12 @@ public class AuditionRepository implements SaveRepository<Long, AuditionEntity> 
     public Long save(AuditionEntity auditionEntity) throws SQLException {
         connection.beginRequest();
         try(PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO audition (user_id, time, message) VALUES(?, ?, ?, ?)",
+                "INSERT INTO audition (user_id, time, message) VALUES(?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
         )) {
 
             statement.setLong(1, auditionEntity.getUser_id());
-            statement.setDate(2, auditionEntity.getTime());
+            statement.setDate(2, auditionEntity.getTimeStamp());
             statement.setString(3, auditionEntity.getMessage());
 
             statement.executeUpdate();
