@@ -1,15 +1,9 @@
 package org.y_lab.application.service;
 
-import liquibase.exception.LiquibaseException;
-import org.y_lab.adapter.out.repository.AuditionRepository;
-import org.y_lab.adapter.out.repository.CartRepository;
-import org.y_lab.adapter.out.repository.MarketPlaceRepository;
-import org.y_lab.adapter.out.repository.UserRepositoryImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.y_lab.adapter.out.repository.interfaces.Repository;
-import org.y_lab.adapter.out.repository.interfaces.SaveRepository;
 import org.y_lab.adapter.out.repository.interfaces.SimpleRepository;
 import org.y_lab.application.exceptions.*;
-import org.y_lab.application.model.AuditionEntity;
 import org.y_lab.application.model.Cart;
 import org.y_lab.application.model.MarketPlace.Item;
 import org.y_lab.application.model.MarketPlace.Platform;
@@ -22,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+@org.springframework.stereotype.Service
 public class PlatformServiceImpl implements Service {
 
     private Repository<Long, User> userRepository;
@@ -29,16 +24,15 @@ public class PlatformServiceImpl implements Service {
     private Repository<Long, Item> mpRepository;
     private Platform platform;
 
+    @Autowired
     public PlatformServiceImpl(Repository<Long, User> userRepository, SimpleRepository<UUID, Cart> cartSaveRepo, Repository<Long, Item> mpRepository) {
         this.userRepository = userRepository;
         this.cartSaveRepo = cartSaveRepo;
         this.mpRepository = mpRepository;
+        this.platform = new Platform();
     }
 
-    public PlatformServiceImpl() throws SQLException, LiquibaseException {
-        this(new UserRepositoryImpl(), new CartRepository(), new MarketPlaceRepository());
 
-    }
 
     /**
      * Username must be unique
@@ -102,7 +96,7 @@ public class PlatformServiceImpl implements Service {
     public Item addProductToCart(Item item, User user) {
         Item i = platform.releaseProductToCart(item, user.getCart());
         try {
-            mpRepository.update(i.getProduct().getId(), i);
+            mpRepository.update(i);
         } catch (SQLException e) {
             throw new SQLRuntimeException(e.getMessage());
         }
@@ -163,7 +157,7 @@ public class PlatformServiceImpl implements Service {
     @Override
     public Item editProduct(Long id, Item item) throws ProductNotFoundException {
         try {
-            return mpRepository.update(id, item);
+            return mpRepository.update(item);
         } catch (Exception e){
             throw new ProductNotFoundException();
         }
@@ -239,7 +233,7 @@ public class PlatformServiceImpl implements Service {
             Item item = mpRepository.getById(id);
             Product product = item.getProduct();
             product.setDiscount(discount);
-            return mpRepository.update(id, item);
+            return mpRepository.update(item);
         } catch (WrongDiscountException e){
             throw e;
         } catch (SQLException e){
