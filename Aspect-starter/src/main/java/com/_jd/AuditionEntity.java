@@ -1,4 +1,4 @@
-package org.y_lab.application.model;
+package com._jd;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -16,13 +16,13 @@ public class AuditionEntity {
      * Base constructor
      * Timestamp automatically
      * Id autoincrements in DB
-//     * @param user_id which do something
+     * @param user_id which do something
      * @param message about what user does
      */
     public AuditionEntity(String message) {
         this.id = null;
 //        this.user_id = user_id;
-        this.timeStamp = java.sql.Date.valueOf(LocalDate.now());
+        this.timeStamp = Date.valueOf(LocalDate.now());
         this.message = message;
     }
 
