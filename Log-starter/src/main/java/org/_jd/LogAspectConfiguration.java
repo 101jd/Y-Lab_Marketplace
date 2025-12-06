@@ -3,9 +3,9 @@ package org._jd;
 import org.springframework.context.annotation.Bean;
 
 @org.springframework.context.annotation.Configuration
-public class Configuration {
+public class LogAspectConfiguration {
     @Bean
-    public LoggingAspect aspect(){
+    public LoggingAspect loggingAspect(){
         return new LoggingAspect();
     }
 }

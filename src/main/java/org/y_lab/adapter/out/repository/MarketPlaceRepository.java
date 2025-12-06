@@ -60,7 +60,7 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
             return statement;
         }, keyHolder);
 
-        Long productId = keyHolder.getKeyAs(Long.class);
+        Long productId = (Long) keyHolder.getKeys().get("id");
         template.update(sqlItems, productId, item.getQty());
         itemCache.cache(item);
 
@@ -83,8 +83,9 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
                         price=?, discount=?
                         WHERE id=?""";
 
-        template.update(sqlItem, id);
-        template.update(sqlProduct, id);
+        template.update(sqlItem, item.getQty(), id);
+        template.update(sqlProduct,product.getTitle(), product.getDescription(),
+                product.getPrice(), product.getDiscount(), id);
         itemCache.cache(item);
 
         return item;
@@ -103,7 +104,7 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
         String sql = "DELETE FROM products WHERE id=?";
 
         try {
-            template.update(sql);
+            template.update(sql, item.getProduct().getId());
             return true;
         }catch (Exception e){
             return false;
@@ -130,21 +131,22 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
 
             Item item = template.query(sql, rs -> {
                 try {
+                    rs.next();
                     Item i = new Item(
                             new Product(new ProductDTO(
-                                    rs.getLong("p.id"),
-                                    rs.getString("p.title"),
-                                    rs.getString("p.description"),
-                                    rs.getDouble("p.price"),
-                                    rs.getInt("p.discount")
-                            )), rs.getInt("i.qty")
+                                    rs.getLong("id"),
+                                    rs.getString("title"),
+                                    rs.getString("description"),
+                                    rs.getDouble("price"),
+                                    rs.getInt("discount")
+                            )), rs.getInt("qty")
                     );
 
                     return i;
                 } catch (QtyLessThanZeroException ex) {
                     throw new RuntimeException(ex);
                 }
-            });
+            }, id);
 
             itemCache.cache(item);
             return item;

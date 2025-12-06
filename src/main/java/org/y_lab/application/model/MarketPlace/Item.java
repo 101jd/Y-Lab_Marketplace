@@ -23,6 +23,8 @@ public class Item {
         this.inStock = isInStock();
     }
 
+    public Item(){}
+
     public Product getProduct() {
         return product;
     }

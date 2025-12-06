@@ -12,7 +12,7 @@ http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
             </column>
             <column name="city" type="VARCHAR(32)"/>
             <column name="street" type="VARCHAR(32)"/>
-            <column name="houseNumber" type="INT"/>
+            <column name="housenumber" type="INT"/>
             <column name="apartment" type="INT"/>
         </createTable>
 
@@ -29,7 +29,7 @@ http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
                 deleteCascade="true"/>
             </column>
             <column name="cart_id" type="VARCHAR(64)"/>
-            <column name="admin" type="BOOL"/>
+            <column name="admin" type="BOOLEAN"/>
         </createTable>
 
         <createTable tableName="carts" schemaName="mps">

@@ -60,8 +60,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
         }, keyHolder);
 
 
-
-        Long id = keyHolder.getKeyAs(Long.class);
+        Long id = (Long) keyHolder.getKeys().get("id");
         userCache.cache(new User(new UserDTO(
                 id, user.getUsername(), new String(user.getPassword()),
                 user.getAddress(), user.getCart(), user.isAdmin())));
@@ -74,10 +73,11 @@ public class UserRepositoryImpl implements Repository<Long, User> {
         String sql = "UPDATE users SET username=?, password=?, address_id=?, admin=? WHERE id=?";
 
 
-        template.update(sql, user.getUsername(), new String(user.getPassword()),
-                user.getAddress().getId().toString(), user.isAdmin());
-
         saveAddress(user.getAddress());
+        template.update(sql, user.getUsername(), new String(user.getPassword()),
+                user.getAddress().getId().toString(), user.isAdmin(), id);
+
+
 
         return user;
 
@@ -111,7 +111,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
                         getCartById(UUID.fromString(rs.getString("cart_id"))),
                         rs.getBoolean("admin")
                 ));
-            });
+            }, id);
             return user;
             }
         }
@@ -122,7 +122,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
 
         String sql = """
         SELECT u.id, u.username, u.password,
-               a.id AS address_id, a.city, a.street, a."houseNumber", a.apartment
+               a.id AS address_id, a.city, a.street, a.housenumber, a.apartment, u.admin
         FROM users u
         JOIN addresses a ON u.address_id = a.id
         """;
@@ -132,7 +132,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
                     UUID.fromString(rs.getString("address_id")),
                     rs.getString("city"),
                     rs.getString("street"),
-                    rs.getInt("houseNumber"),
+                    rs.getInt("housenumber"),
                     rs.getInt("apartment")
             ));
 
@@ -150,7 +150,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
 
     //region private methods
     private UUID saveAddress(Address address) throws SQLException {
-        String sql =  "INSERT INTO addresses (id, city, street, \"houseNumber\", apartment) " +
+        String sql =  "INSERT INTO addresses (id, city, street, housenumber, apartment) " +
                 "VALUES(?, ?, ?, ?, ?)";
 
         try {
@@ -179,7 +179,7 @@ public class UserRepositoryImpl implements Repository<Long, User> {
                     UUID.fromString(rs.getString("id")),
                     rs.getString("city"),
                     rs.getString("street"),
-                    rs.getInt("houseNumber"),
+                    rs.getInt("housenumber"),
                     rs.getInt("apartment")
             ));
         });
