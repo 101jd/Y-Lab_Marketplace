@@ -1,37 +1,38 @@
 package org.y_lab.adapter.out.repository;
 
-import liquibase.exception.LiquibaseException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.y_lab.adapter.out.repository.caches.ItemCache;
 import org.y_lab.adapter.out.repository.interfaces.Cache;
 import org.y_lab.adapter.out.repository.interfaces.Repository;
 import org.y_lab.application.exceptions.NotFoundException;
 import org.y_lab.application.exceptions.QtyLessThanZeroException;
-import org.y_lab.application.exceptions.SQLRuntimeException;
 import org.y_lab.application.model.MarketPlace.Item;
 import org.y_lab.application.model.MarketPlace.Product;
 import org.y_lab.application.model.dto.ProductDTO;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 
-
+@org.springframework.stereotype.Repository
 public class MarketPlaceRepository implements Repository<Long, Item> {
 
-    private Connection connection;
+    private JdbcTemplate template;
     private Cache<Long, Item> itemCache;
 
 
 
-    public MarketPlaceRepository(Connection connection){
-        this.connection = connection;
+    @Autowired
+    public MarketPlaceRepository(JdbcTemplate template){
+        this.template = template;
         this.itemCache = new ItemCache();
     }
 
-    public MarketPlaceRepository() throws SQLException, LiquibaseException {
-        this(ConnectionManager.getInstance().getConnection());
-
-    }
 
     /**
      *
@@ -42,103 +43,51 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
     @Override
     public Long save(Item item) throws SQLException {
         Product product = item.getProduct();
-        connection.beginRequest();
+        String sqlProducts = "INSERT INTO products (title, description, price, discount) " +
+                        "VALUES(?, ?, ?, ?)";
+        String sqlItems = "INSERT INTO items (product_id, qty)\n" +
+                            "VALUES (?, ?)\n" +
+                            "ON CONFLICT (product_id)\n" +
+                            "DO UPDATE SET qty = EXCLUDED.qty;\n";
 
-        try(PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO products (title, description, price, discount) " +
-                        "VALUES(?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
-
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        template.update(con -> {
+            PreparedStatement statement = con.prepareStatement(sqlProducts, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, product.getTitle());
             statement.setString(2, product.getDescription());
             statement.setDouble(3, product.getPrice());
             statement.setInt(4, product.getDiscount());
+            return statement;
+        }, keyHolder);
 
-            statement.executeUpdate();
+        Long productId = keyHolder.getKeyAs(Long.class);
+        template.update(sqlItems, productId, item.getQty());
+        itemCache.cache(item);
 
-            ResultSet set = statement.getGeneratedKeys();
-
-            Long id = null;
-
-            if (set.next()){
-                id = set.getLong("id");
-            } else throw new SQLRuntimeException("Item save failed");
-
-            try(PreparedStatement itemStatement = connection.prepareStatement(
-                    "INSERT INTO items (product_id, qty)\n" +
-                            "VALUES (?, ?)\n" +
-                            "ON CONFLICT (product_id)\n" +
-                            "DO UPDATE SET qty = EXCLUDED.qty;\n"
-            )) {
-                itemStatement.setLong(1, id);
-                itemStatement.setInt(2, item.getQty());
-
-                itemStatement.executeUpdate();
-
-
-                return id;
-
-            }
-        } catch (SQLException e){
-            throw e;
-        }finally {
-            connection.endRequest();
-        }
+        return productId;
     }
 
     /**
      *
-     * @param id of modifying Product
      * @param item modified
      * @return modified Product
      * @throws SQLException
      */
     @Override
-    public Item update(Long id, Item item) throws SQLException {
+    public Item update(Item item) throws SQLException {
+        Long id = item.getProduct().getId();
         Product product = item.getProduct();
-        connection.beginRequest();
-
-        try(PreparedStatement statement = connection.prepareStatement(
-                "UPDATE items SET qty=? WHERE product_id=?"
-        )) {
-            statement.setInt(1, item.getQty());
-            statement.setLong(2, id);
-
-            statement.executeUpdate();
-        }
-
-        if (product.equals(this.getById(id).getProduct())) {
-            return item;
-        }
-
-        try(PreparedStatement statement = connection.prepareStatement(
-                """
+        String sqlItem = "UPDATE items SET qty=? WHERE product_id=?";
+        String sqlProduct = """
                         UPDATE products SET title=?, description=?,
                         price=?, discount=?
-                        WHERE id=?"""
-        )) {
+                        WHERE id=?""";
 
-            statement.setString(1, product.getTitle());
-            statement.setString(2, product.getDescription());
-            statement.setDouble(3, product.getPrice());
-            statement.setInt(4, product.getDiscount());
-            statement.setLong(5, id);
+        template.update(sqlItem, id);
+        template.update(sqlProduct, id);
+        itemCache.cache(item);
 
-            statement.executeUpdate();
-
-        } catch (SQLException e){
-            throw e;
-        }finally {
-            connection.endRequest();
-        }
-
-        try {
-            Item i = new Item(new Product(new ProductDTO(id, product.getTitle(), product.getDescription(),
-                    product.getPrice(), product.getDiscount())), item.getQty());
-            itemCache.cache(i);
-            return i;
-        } catch (QtyLessThanZeroException e) {
-            throw new RuntimeException(e);
-        }
+        return item;
     }
 
     /**
@@ -151,22 +100,13 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
     @Override
     public boolean delete(Item item) throws SQLException {
         Product product = item.getProduct();
-        connection.beginRequest();
+        String sql = "DELETE FROM products WHERE id=?";
 
-        try(PreparedStatement statement = connection.prepareStatement(
-                "DELETE FROM products WHERE id=?"
-        )) {
-
-            statement.setLong(1, product.getId());
-
-            statement.executeUpdate();
-            itemCache.delete(product.getId());
+        try {
+            template.update(sql);
             return true;
-        }catch (SQLException e){
-            e.printStackTrace();
+        }catch (Exception e){
             return false;
-        }finally {
-            connection.endRequest();
         }
     }
 
@@ -187,40 +127,30 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
                             JOIN products p ON i.product_id = p.id
                             WHERE p.id = ?
                     """;
-            Item item = null;
-            connection.beginRequest();
 
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setLong(1, id);
+            Item item = template.query(sql, rs -> {
+                try {
+                    Item i = new Item(
+                            new Product(new ProductDTO(
+                                    rs.getLong("p.id"),
+                                    rs.getString("p.title"),
+                                    rs.getString("p.description"),
+                                    rs.getDouble("p.price"),
+                                    rs.getInt("p.discount")
+                            )), rs.getInt("i.qty")
+                    );
 
-                try (ResultSet rs = statement.executeQuery()) {
-                    if (rs.next()) {
-                        Product product = new Product(new ProductDTO(
-                                rs.getLong("id"),
-                                rs.getString("title"),
-                                rs.getString("description"),
-                                rs.getDouble("price"),
-                                rs.getInt("discount")
-                        ));
-
-                        item = new Item(product, rs.getInt("qty"));
-                        itemCache.cache(item);
-
-                    }
+                    return i;
                 } catch (QtyLessThanZeroException ex) {
                     throw new RuntimeException(ex);
-
-                } finally {
-                    connection.endRequest();
                 }
-
-
-            }
+            });
 
             itemCache.cache(item);
             return item;
+            }
         }
-    }
+
 
     /**
      *
@@ -229,38 +159,31 @@ public class MarketPlaceRepository implements Repository<Long, Item> {
      */
     @Override
     public List<Item> getAll() throws SQLException {
-
-        connection.beginRequest();
-        List<Item> items = new ArrayList<>();
         String sql = """
                         SELECT p.id, p.title, p.description, p.price, p.discount, i.qty
                         FROM items i
                         JOIN products p ON i.product_id = p.id;
                 """;
 
-
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            try (ResultSet rs = statement.executeQuery()) {
-                while (rs.next()) {
-                    Product product = new Product(new ProductDTO(
-                            rs.getLong("id"),
-                            rs.getString("title"),
-                            rs.getString("description"),
-                            rs.getDouble("price"),
-                            rs.getInt("discount")
-                    ));
-
-                    items.add(new Item(product, rs.getInt("qty")));
-
-                }
+        RowMapper mapper = (rs, rowNum) -> {
+            Item item = null;
+            try {
+                item = new Item(new Product(
+                        new ProductDTO(
+                                rs.getLong("id"),
+                                rs.getString("title"),
+                                rs.getString("description"),
+                                rs.getDouble("price"),
+                                rs.getInt("discount")
+                        )
+                ), rs.getInt("qty"));
+                return item;
             } catch (QtyLessThanZeroException e) {
-
                 throw new RuntimeException(e);
-            }finally {
-                connection.endRequest();
             }
-        }
+        };
 
-        return items;
+        return template.query(sql, mapper);
+
     }
 }

@@ -1,5 +1,6 @@
 package org.y_lab.adapter.out.repository.caches;
 
+import org.springframework.stereotype.Component;
 import org.y_lab.adapter.out.repository.interfaces.Cache;
 import org.y_lab.application.exceptions.NotFoundException;
 import org.y_lab.application.model.Cart;
@@ -8,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Component
 public class CartCache implements Cache<UUID, Cart> {
 
     Map<UUID, Cart> cartMap;
