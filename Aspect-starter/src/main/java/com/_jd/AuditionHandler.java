@@ -1,6 +1,5 @@
-package org.y_lab.application.service.interfaces;
+package com._jd;
 
-import org.y_lab.application.model.AuditionEntity;
 
 import java.sql.SQLException;
 

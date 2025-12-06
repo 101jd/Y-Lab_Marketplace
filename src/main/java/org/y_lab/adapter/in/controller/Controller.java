@@ -1,14 +1,14 @@
 package org.y_lab.adapter.in.controller;
 
+import com._jd.Audition;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org._jd.ToLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.y_lab.application.annotations.Audition;
-import org.y_lab.application.annotations.ToLog;
 import org.y_lab.application.exceptions.ProductNotFoundException;
 import org.y_lab.application.exceptions.UserNotFoundRuntimeException;
 import org.y_lab.application.exceptions.UsernameNotUniqueException;

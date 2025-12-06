@@ -1,4 +1,4 @@
-package org.y_lab.application.aspects;
+package org._jd;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 @Aspect
 public class LoggingAspect {
 
-    @Pointcut("within(org/y_lab/application/annotations/ToLog *) && execution(* * (..))")
+    @Pointcut("within(org.y_lab.application.annotations.ToLog*) && execution(* *(..))")
     public void annotatedByToLog(){}
 
     @Around("annotatedByToLog()")

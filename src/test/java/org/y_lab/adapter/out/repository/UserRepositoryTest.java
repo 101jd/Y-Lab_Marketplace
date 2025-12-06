@@ -1,62 +1,55 @@
 package org.y_lab.adapter.out.repository;
 
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.LiquibaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.y_lab.adapter.out.repository.interfaces.Repository;
 import org.y_lab.application.model.Address;
+import org.y_lab.application.model.Cart;
 import org.y_lab.application.model.User;
+import org.y_lab.application.model.dto.UserDTO;
+import org.y_lab.config.WebAppConfig;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
+import java.io.IOException;
 import java.sql.SQLException;
 
+@SpringBootTest
 @Testcontainers
+@Import(WebAppConfig.class)
 public class UserRepositoryTest {
+
     @Container
-    private static PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres")
-            .withDatabaseName("mpdbtest")
-            .withUsername("testuser")
-            .withPassword("testpass")
-            .withReuse(false);
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("testdb")
+            .withUsername("postgres")
+            .withPassword("postgres")
+            .withInitScript("schema.sql");;
 
-    private static Connection connection;
+    @DynamicPropertySource
+    static void registerProps(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
 
-    private static Repository<Long, User> userRepository;
+        // Важно: пусть Liquibase использует эти же параметры
+        registry.add("spring.liquibase.url", postgres::getJdbcUrl);
+        registry.add("spring.liquibase.user", postgres::getUsername);
+        registry.add("spring.liquibase.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private UserRepositoryImpl userRepository;
 
     @BeforeAll
-    public static void init() throws SQLException, LiquibaseException {
-        connection = DriverManager.getConnection(
-                container.getJdbcUrl(),
-                container.getUsername(),
-                container.getPassword()
-        );
-
-        connection.prepareStatement("CREATE SCHEMA IF NOT EXISTS mps").executeUpdate();
-
-        Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(
-                new JdbcConnection(connection)
-        );
-
-        database.setDefaultSchemaName("mps");
-        database.setLiquibaseSchemaName("mps");
-
-        Liquibase liquibase = new Liquibase("db/changelog/changelog.xml",
-                new ClassLoaderResourceAccessor(), database);
-
-        liquibase.update();
-
-        connection.createStatement().executeUpdate("ALTER SEQUENCE users_id_seq RESTART WITH 2");
-
-        userRepository = new UserRepositoryImpl(connection);
-
+    public static void start() throws IOException, InterruptedException {
+        postgres.start();
+        postgres.execInContainer("psql", "-U", "postgres", "-c",
+                "CREATE SCHEMA IF NOT EXISTS mps");
     }
 
 
@@ -65,6 +58,7 @@ public class UserRepositoryTest {
     public void testGetAll() throws SQLException {
         Assertions.assertEquals(1, userRepository.getAll().size());
     }
+
 
     @DisplayName("Saves new user")
     @Test
@@ -75,30 +69,26 @@ public class UserRepositoryTest {
         Assertions.assertEquals(2, userRepository.save(user));
     }
 
+
     @DisplayName("Updates user data")
     @Test
     public void testUpdate() throws SQLException {
-        User user = new User("qwerty", "123",
-                new Address("w", "asd", 11, 2), true);
+        User user = new User(new UserDTO(1l, "testuser", "123",
+                new Address("w", "asd", 11, 2), new Cart(), true));
 
-        Assertions.assertEquals("qwerty", userRepository.update(1L, user).getUsername());
+        Assertions.assertEquals("testuser", userRepository.update(user).getUsername());
     }
+
 
     @DisplayName("Deletes user")
     @Test
     public void testDelete() throws SQLException {
-        User user = userRepository.getById(1L);
-        Assertions.assertTrue(userRepository.delete(user));
-    }
-
-    @AfterEach
-    public void rollback() throws SQLException {
-        connection.rollback();
+        Assertions.assertTrue(userRepository.delete(new User(new UserDTO(1L, "testuser", "123",
+                new Address("w", "asd", 11, 2), new Cart(), true))));
     }
 
     @AfterAll
-    public static void close() throws SQLException {
-        connection.close();
-        container.close();
+    public static void stop(){
+        postgres.stop();
     }
 }

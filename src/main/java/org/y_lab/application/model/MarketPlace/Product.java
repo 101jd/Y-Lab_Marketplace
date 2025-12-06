@@ -44,6 +44,8 @@ public class Product {
         setDiscount(discount);
     }
 
+    public Product(){}
+
     /**
      * Without discount constructor
      * @param title - name of Product
