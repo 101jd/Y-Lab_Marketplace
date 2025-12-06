@@ -96,13 +96,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.testcontainers/testcontainers -->
-<!--        <dependency>-->
-<!--            <groupId>org.testcontainers</groupId>-->
-<!--            <artifactId>testcontainers</artifactId>-->
-<!--            <version>${testcontainers.version}</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
 
         <!-- https://mvnrepository.com/artifact/org.testcontainers/junit-jupiter -->
         <dependency>
@@ -178,12 +171,7 @@
         </dependency>
 
 <!--        SPRING-->
-        <!-- https://mvnrepository.com/artifact/org.springframework/spring-context -->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework</groupId>-->
-<!--            <artifactId>spring-context</artifactId>-->
-<!--            <version>${spring.version}</version>-->
-<!--        </dependency>-->
+
         <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
